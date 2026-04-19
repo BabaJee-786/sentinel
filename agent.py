@@ -143,6 +143,168 @@ def write_debug_log(message):
     except OSError:
         pass
 
+# ======================== DEVICE PERMISSION CHECKING ========================
+
+def fetch_device_permissions(device_id, domain_ids):
+    """
+    Fetch device-specific domain permissions from the server
+    
+    Args:
+        device_id: The device ID
+        domain_ids: List of domain IDs to check permissions for
+    
+    Returns:
+        Dictionary mapping domain_id to permission dict
+    """
+    if not domain_ids:
+        return {}
+    
+    result = api_request(
+        'fetch-permissions',
+        method='POST',
+        data={
+            'device_id': device_id,
+            'domain_ids': domain_ids
+        }
+    )
+    
+    if result and result.get('success'):
+        permissions = result.get('permissions', [])
+        return {p.get('domain_id'): p for p in permissions if p.get('domain_id')}
+    
+    return {}
+
+
+def check_domain_permission(device_id, domain, domain_id, permissions_cache=None):
+    """
+    Check if a device has specific permission override for a domain
+    
+    Args:
+        device_id: The device ID
+        domain: The domain name (string)
+        domain_id: The domain ID (string)
+        permissions_cache: Optional cached permissions dict
+    
+    Returns:
+        True if device has allow override, None otherwise
+    """
+    if permissions_cache and domain_id in permissions_cache:
+        perm = permissions_cache[domain_id]
+        if perm.get('is_allowed'):
+            write_debug_log(f'[PERMISSION] Device {device_id} has override for {domain}')
+            return True
+    
+    return None
+
+
+def should_block_domain(domain_dict, device_id, permissions_cache=None):
+    """
+    Determine if a domain should be blocked for this device
+    
+    Factors:
+    - Device-specific permission (highest priority)
+    - Domain status (live/paused/restricted)
+    
+    Args:
+        domain_dict: Dictionary with 'id', 'domain', 'status' keys
+        device_id: The device ID
+        permissions_cache: Cached device permissions
+    
+    Returns:
+        Boolean: True if should block, False if should allow
+    """
+    domain = domain_dict.get('domain', '')
+    domain_id = domain_dict.get('id', '')
+    status = domain_dict.get('status', 'restricted')
+    
+    # Check device-specific permission first
+    permission = check_domain_permission(device_id, domain, domain_id, permissions_cache)
+    if permission is True:
+        return False  # Device has allow override
+    
+    # Check global domain status
+    if status == 'paused':
+        return False  # Domain is temporarily disabled
+    
+    if status == 'restricted' or status == 'live':
+        return True  # Should block
+    
+    return False  # Default: allow
+
+
+def build_restricted_domain_map_with_device(device_id, domains, permissions_cache=None):
+    """
+    Build a map of restricted domains for a specific device
+    
+    Args:
+        device_id: The device ID
+        domains: List of all domains from API
+        permissions_cache: Cached device permissions
+    
+    Returns:
+        Dictionary mapping normalized domains to original domain objects
+    """
+    domain_map = {}
+    
+    for domain_obj in domains:
+        if not should_block_domain(domain_obj, device_id, permissions_cache):
+            continue
+        
+        domain_name = domain_obj.get('domain', '').strip().lower()
+        if not domain_name:
+            continue
+        
+        normalized = normalize_domain(domain_name)
+        if normalized:
+            domain_map[normalized] = domain_name
+            domain_map['www.' + normalized] = domain_name
+    
+    return domain_map
+
+
+def sync_device_permissions(device_id, domains):
+    """
+    Synchronize device permissions from server
+    
+    Args:
+        device_id: The device ID
+        domains: List of domain dictionaries
+    
+    Returns:
+        Dictionary of permissions indexed by domain_id
+    """
+    domain_ids = [d.get('id') for d in domains if d.get('id')]
+    return fetch_device_permissions(device_id, domain_ids)
+
+
+def update_hosts_with_permissions(all_domains, device_restricted_domains):
+    """
+    Update hosts file based on device-specific restricted domains
+    
+    Args:
+        all_domains: All domains from API
+        device_restricted_domains: Restricted domains for this device
+    """
+    global original_hosts_content
+    
+    content = original_hosts_content.strip() + '\n\n' + SENTINEL_START + '\n'
+    
+    for domain in device_restricted_domains.keys():
+        if not domain.startswith('www.'):  # Skip www duplicates
+            content += f'{BLOCK_REDIRECT_IP} {domain}\n'
+            content += f'{BLOCK_REDIRECT_IP} www.{domain}\n'
+    
+    content += SENTINEL_END + '\n'
+    
+    try:
+        with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
+            f.write(content)
+        if os.name == 'nt':
+            subprocess.run(['ipconfig', '/flushdns'], capture_output=True)
+        write_debug_log('[INFO] Hosts file updated with device-specific restrictions.')
+    except Exception as exc:
+        write_debug_log(f'[WARN] Unable to update hosts file: {exc}')
+
 # ======================== HOSTS FILE MANAGEMENT ========================
 
 def backup_hosts():
@@ -738,11 +900,17 @@ def main():
     atexit.register(block_listener.stop)
 
     domains = fetch_domains(device_id)
-    update_hosts(domains)
+    permissions_cache = sync_device_permissions(device_id, domains)
+    
+    # Build domain map with device-specific permissions
+    restricted_domains = build_restricted_domain_map_with_device(device_id, domains, permissions_cache)
+    
+    # Update hosts file with device-aware restrictions
+    update_hosts_with_permissions(domains, restricted_domains)
     block_listener.update_domains(domains)
     current_domains_signature = domains_signature(domains)
     heartbeat(device_id)
-    write_debug_log(f'[INFO] Monitoring {len(build_restricted_domain_map(domains)) // 2} restricted domains for blocked browsing attempts.')
+    write_debug_log(f'[INFO] Monitoring {len(restricted_domains) // 2} restricted domains for blocked browsing attempts.')
     write_debug_log(f'[INFO] Debug log file: {DEBUG_LOG_FILE}')
 
     last_domain_refresh = time.time()
@@ -800,9 +968,12 @@ def main():
             if latest_signature != current_domains_signature:
                 domains = latest_domains
                 current_domains_signature = latest_signature
-                update_hosts(domains)
+                # Refresh device permissions and update with device-aware restrictions
+                permissions_cache = sync_device_permissions(device_id, domains)
+                restricted_domains = build_restricted_domain_map_with_device(device_id, domains, permissions_cache)
+                update_hosts_with_permissions(domains, restricted_domains)
                 block_listener.update_domains(domains)
-                write_debug_log(f'[INFO] Domain rules updated in real time. Active restricted domains: {len(build_restricted_domain_map(domains)) // 2}')
+                write_debug_log(f'[INFO] Domain rules updated in real time. Active restricted domains: {len(restricted_domains) // 2}')
             last_domain_refresh = now
 
         if now - last_heartbeat > HEARTBEAT_SECONDS:

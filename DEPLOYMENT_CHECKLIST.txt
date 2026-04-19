@@ -1,0 +1,453 @@
+┌─────────────────────────────────────────────────────────────────────┐
+│       SENTINEL NET V2.0 - DEPLOYMENT CHECKLIST                      │
+│                                                                     │
+│           Print this page for reference during deployment          │
+│                                                                     │
+│                     Date: _______________                          │
+│                  Deployed By: _______________                      │
+│                  Verified By: _______________                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 1: PRE-DEPLOYMENT (Estimated: 10 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+PREPARATION
+  □ Downloaded all Sentinel Net V2.0 files
+  □ Read QUICKSTART.md
+  □ Have Hostinger login credentials ready
+  □ Have database name and MySQL credentials ready
+  □ Have FTP/SFTP credentials
+  □ Have access to phpMyAdmin
+  □ Backed up existing files and database
+
+REQUIREMENTS CHECK
+  □ Hostinger account active and accessible
+  □ MySQL/MariaDB available on Hostinger
+  □ PHP 7.4+ installed on Hostinger
+  □ SSH access available (optional but recommended)
+  □ Composer available on Hostinger
+
+CREDENTIALS COLLECTED
+  MySQL Host: _________________________
+  MySQL User: _________________________
+  MySQL Pass: _________________________
+  Database Name: _________________________
+  
+  FTP Host: _________________________
+  FTP User: _________________________
+  FTP Pass: _________________________
+  
+  Domain/IP: _________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 2: UPLOAD FILES (Estimated: 10 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+FILES TO UPLOAD (via FTP/File Manager)
+  □ dashboard.php
+  □ backend/ (entire directory)
+  □ pages/ (entire directory - NEW)
+  □ assets/ (entire directory with app.js - NEW)
+  □ partials/ (if updated)
+  □ composer.json (NEW)
+  □ All documentation .md files
+
+FILES TO EXCLUDE
+  □ .env (will create on server)
+  □ vendor/ (generate via composer)
+  □ .git/ and .gitignore
+  □ node_modules/ (if any)
+  □ *.log files
+
+UPLOAD METHOD: _________________________ (FTP/File Manager/SSH)
+
+Upload completed by: _________________________ (time/date)
+Upload verified: ☐ Yes ☐ No
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 3: DATABASE SETUP (Estimated: 5 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+CREATE DATABASE (if needed)
+  □ Created MySQL database on Hostinger
+  Database Name: _________________________
+  
+  □ Created MySQL user with all privileges
+  Username: _________________________
+  
+  □ Can access via phpMyAdmin
+
+RUN MIGRATIONS
+  Method: ☐ phpMyAdmin ☐ SSH ☐ Other: _______________
+  
+  □ Run migrations.sql (existing schema)
+  □ Run migrations_v2.sql (new tables/columns)
+  
+  Migrations completed by: _________________________ (time/date)
+
+VERIFY SCHEMA
+  Via phpMyAdmin, verify these tables exist:
+  
+  NEW TABLES:
+  □ device_domain_permissions
+  □ settings (with default entries)
+  □ email_logs
+  □ audit_logs
+  
+  MODIFIED TABLES:
+  □ devices (has 'status' column)
+  □ domains (status includes 'live' and 'paused')
+  
+  OTHER TABLES (should still exist):
+  □ users
+  □ alerts
+  □ logs
+  □ commands
+
+Database verification completed: ☐ Yes ☐ No
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 4: ENVIRONMENT & CONFIGURATION (Estimated: 10 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+CREATE .env FILE
+  Method: ☐ File Manager ☐ SSH ☐ Other: _______________
+  
+  File Location: /public_html/sentinel/.env
+  
+  Settings Entered:
+  □ DB_HOST = _________________________
+  □ DB_USER = _________________________
+  □ DB_PASS = _________________________
+  □ DB_NAME = _________________________
+  □ SENTINEL_API_BASE = https://_________________________/backend/api/index.php
+  □ SENTINEL_API_KEY = _________________________
+  □ SENTINEL_ADMIN_KEY = _________________________
+
+SET PERMISSIONS (via SSH)
+  □ chmod 755 . (root directory)
+  □ chmod 755 backend pages assets
+  □ chmod 600 .env
+  
+  OR (via File Manager):
+  □ All files: 644
+  □ All directories: 755
+  □ .env file: 600
+
+Configuration completed: ☐ Yes ☐ No
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 5: INSTALL DEPENDENCIES (Estimated: 5 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+COMPOSER INSTALLATION
+
+Via SSH:
+  □ SSH into Hostinger
+  □ cd public_html/sentinel
+  □ composer install
+  
+OR
+  
+Create Composer in File Manager:
+  □ Create install_dependencies.php in sentinel/
+  □ Visit https://yourdomain.com/sentinel/install_dependencies.php
+  □ Delete install_dependencies.php when done
+
+VERIFY INSTALLATION
+  □ vendor/ directory created
+  □ vendor/phpmailer/ exists
+  □ vendor/autoload.php exists
+  □ No errors during installation
+
+Composer installation completed: ☐ Yes ☐ No
+Time completed: _________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 6: INITIAL TESTING (Estimated: 10 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+BASIC ACCESS TEST
+  □ Dashboard accessible: https://_________________________/sentinel/dashboard.php
+  
+  Login with credentials:
+  Username: _________________________
+  Password: _________________________
+  
+  □ Login successful
+  □ Redirected to dashboard
+
+DASHBOARD VERIFICATION
+  □ Dashboard page loads
+  □ Statistics display
+  □ No errors in browser console
+  
+  □ Sidebar navigation visible
+  □ Can click between pages:
+    ☐ Dashboard ☐ Devices ☐ Alerts ☐ Domains ☐ Settings
+
+PAGE LOAD TEST
+  □ Dashboard page loads and displays stats
+  □ Devices page loads
+  □ Alerts page loads
+  □ Domains page loads
+  □ Settings page loads (no fields yet)
+
+Basic testing completed: ☐ Yes ☐ No
+Tester: _________________________ (date/time)
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 7: FUNCTIONALITY TESTING (Estimated: 30 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+DEVICE MANAGEMENT
+  □ Can edit device name
+  □ Can edit device type
+  □ Can toggle device status
+  □ Can delete device (with confirmation)
+  □ Changes save to database
+  
+  Test Device: _________________________
+
+ALERTS EXPORT
+  □ Alerts page shows alerts (or empty if none)
+  □ Can select individual alerts (checkboxes work)
+  □ "Select All" button works
+  □ "Export Selected" button enabled when selected
+  □ CSV downloads when clicked
+  □ CSV file opens in Excel/Sheets correctly
+  
+  Sample Alerts Exported: _____________ (count)
+
+DOMAIN MANAGEMENT
+  □ Can add new domain
+  □ Can pause/resume domain (toggle status)
+  □ Can edit domain details
+  □ Can delete domain
+  □ Permissions modal opens
+  □ Can assign/unassign devices
+  
+  Test Domain: _________________________
+
+SETTINGS PAGE
+  □ Settings page loads
+  □ Can enter SMTP host
+  □ Can enter SMTP port
+  □ Can enter SMTP email
+  □ Can enter SMTP password
+  □ Can toggle email alerts on/off
+  □ Can save settings
+  □ Settings persistent after page refresh
+
+Functionality testing completed: ☐ Yes ☐ No
+Tester: _________________________ (date/time)
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 8: OPTIONAL - EMAIL CONFIGURATION (Estimated: 10 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+SMTP SETUP (if using email alerts)
+
+Provider: _________________________
+
+SMTP Credentials:
+  □ Host: _________________________
+  □ Port: _________________________
+  □ Email: _________________________
+  □ Password: _________________________
+  (Use app-specific password for Gmail)
+
+CONFIGURATION IN DASHBOARD
+  □ Settings page open
+  □ Enter SMTP credentials
+  □ Check "Enable Email Alerts"
+  □ Select severity level
+  □ Click "Save Changes"
+  □ Settings saved
+
+EMAIL TEST (Optional)
+  □ Click "Test Email" button in Settings
+  □ Test email sent
+  □ Email received and verified
+  
+  Test Email Address: _________________________
+  Email received: ☐ Yes ☐ No ☐ Skipped
+
+Email configuration completed: ☐ Yes ☐ No
+Tester: _________________________ (date/time)
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 9: SECURITY VERIFICATION (Estimated: 5 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+SECURITY CHECKS
+  □ HTTPS enabled (lock icon in browser)
+  □ .env file not accessible via web:
+     Test: https://_________________________/sentinel/.env (should error)
+  □ Vendor directory not directly accessible
+  □ admin@sentinel.local password changed
+  □ API authentication working (logged in for API calls)
+
+DATABASE SECURITY
+  □ No test data in production (if applicable)
+  □ Audit logs contain records
+  □ Settings don't show passwords in logs
+  
+FIREWALL/NETWORK (Optional)
+  □ IP whitelist configured (if available)
+  □ Only trusted admins can access
+  
+Security verification completed: ☐ Yes ☐ No
+Verified By: _________________________ (date/time)
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 10: BACKUP & DOCUMENTATION (Estimated: 5 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+CREATE BACKUPS
+  □ Database backed up
+    Location: _________________________
+    Date: _________________________
+  
+  □ Files backed up
+    Location: _________________________
+    Date: _________________________
+
+DOCUMENT DEPLOYMENT
+  
+  Deployment Info:
+  ┌─────────────────────────────────────────┐
+  │ Date: _____________________            │
+  │ Deployed By: ___________________        │
+  │ URL: _____________________              │
+  │ Domain: _____________________           │
+  │ Database: _____________________         │
+  │ Status: ☐ SUCCESS ☐ WITH ISSUES       │
+  │ Issues: _____________________           │
+  │ Notes:                                  │
+  │ _____________________________________  │
+  │ _____________________________________  │
+  └─────────────────────────────────────────┘
+
+Document stored at: _________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 11: GO-LIVE (Estimated: 5 minutes)
+═══════════════════════════════════════════════════════════════════════
+
+PRE-LIVE CHECKLIST
+  □ All tests passed
+  □ No errors in logs
+  □ Database verified
+  □ Backups created
+  □ Team notified
+  □ Support contact info available
+
+GO-LIVE
+  □ System marked as "live"
+  □ Users notified
+  □ Dashboard URL communicated: _________________________
+  
+  □ Admin credentials shared securely:
+    Username: _________________________
+    Password: Shared via secure channel ☐
+  
+  □ Initial user training scheduled
+  □ Support contact established
+
+Go-live timestamp: _________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+PHASE 12: POST-DEPLOYMENT TASKS (Ongoing)
+═══════════════════════════════════════════════════════════════════════
+
+IMMEDIATE (First 24 hours)
+  □ Monitor system for errors
+  □ Check database logs
+  □ Verify devices can still communicate
+  □ Test alert notifications (if configured)
+
+WEEKLY
+  □ Review audit logs
+  □ Check device heartbeats
+  □ Verify backup completed
+  □ Monitor storage usage
+
+MONTHLY
+  □ Review security logs
+  □ Check for PHP updates
+  □ Update composer dependencies
+  □ Rotate SMTP password
+  □ Archive old alerts/logs
+
+Schedule maintenance window: _________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+DEPLOYMENT SIGN-OFF
+═══════════════════════════════════════════════════════════════════════
+
+DEPLOYMENT COMPLETED BY:
+  Name: _________________________________
+  Date: _________________________________
+  Time: _________________________________
+  Status: ☐ SUCCESS ☐ SUCCESS WITH ISSUES ☐ FAILED
+
+VERIFIED BY:
+  Name: _________________________________
+  Date: _________________________________
+  Time: _________________________________
+
+ISSUES ENCOUNTERED:
+  _________________________________________________________________
+  _________________________________________________________________
+  _________________________________________________________________
+
+RESOLUTION NOTES:
+  _________________________________________________________________
+  _________________________________________________________________
+
+SIGN-OFF:
+  
+  Deployer: _____________________________ (signature/initials)
+  Date: _________________________________
+  
+  Manager: _____________________________ (signature/initials)
+  Date: _________________________________
+
+
+═══════════════════════════════════════════════════════════════════════
+                    DEPLOYMENT CHECKLIST COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+Total Time Spent: _________________________
+
+For Issues/Support, refer to:
+  • QUICKSTART.md - Quick reference
+  • UPGRADE_GUIDE.md - Feature documentation
+  • HOSTINGER_DEPLOYMENT.md - Detailed deployment guide
+  • TESTING_CHECKLIST.md - Comprehensive testing
+
+Next Steps:
+  1. Train team on dashboard usage
+  2. Configure agent on endpoints (if applicable)
+  3. Set up daily backups
+  4. Schedule weekly security reviews
+  5. Plan future enhancements
+
+═══════════════════════════════════════════════════════════════════════
+                     WELCOME TO SENTINEL NET V2.0!
+═══════════════════════════════════════════════════════════════════════
